@@ -30,7 +30,7 @@ for name in `ls $ROOT`; do
         pngfile="${basefile}.png"
         if [ "`need_to_compile $texfile`" -eq "1" ]; then
             texi2pdf -q $texfile -o $pdfile
-            convert -density 200 $pdfile -quality 100 -sharpen 0x1.0 $pngfile
+            convert -trim -density 150 $pdfile -quality 100 -sharpen 0x1.0 $pngfile
         fi
     fi
 done

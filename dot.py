@@ -3,6 +3,7 @@ import sys
 import copy
 import logging
 import os
+import inspect
 
 cluster_no = 0
 space_prefix_unit = " " * 4
@@ -11,10 +12,18 @@ cur_prefix_length = 0
 node_classes = {}
 edge_classes = {}
 
+DEBUG = True
+
+# utils
 def cur_prefix_space():
     return cur_prefix_length * space_prefix_unit
-def display(s):
-    print cur_prefix_space() + s;
+def display(s, lineno=None, filename=None):
+    output = cur_prefix_space() + s
+    if lineno and filename:
+        assert DEBUG
+        output += " // %dth line from %s" % (lineno, filename)
+    print output
+
 def dic2attrs(dic):
     return ', '.join(["%s=%s" % (k,v) for k, v in dic.items()])
 
@@ -31,6 +40,27 @@ def register_edge_class(name, **argdic):
 def update_edge_class(name, **argdic):
     assert name in edge_classes
     edge_classes[name].update(argdic)
+
+class _Debug(object):
+    @staticmethod
+    def turnon():
+        global DEBUG
+        DEBUG = True
+    @staticmethod
+    def turnoff():
+        global DEBUG
+        DEBUG = False
+    def get_filename(self):
+        assert DEBUG
+        f = inspect.currentframe().f_back
+        mod = f.f_code.co_filename
+        return mod
+    def get_lineno(self):
+        assert DEBUG
+        f = inspect.currentframe().f_back
+        lineno = f.f_lineno
+        return lineno
+Debug = _Debug()
 
 # blocks
 def BlockBegin(name, **argdic):
@@ -56,10 +86,17 @@ def Node(name, cls_name, *al, **argdic):
         display("// %s" % argdic['comment'])
         del argdic['comment']
     base_attr = copy.deepcopy(node_classes[cls_name])
+    base_attr['label'] = name
     base_attr.update(argdic)
     _arglist = " ".join(al)
     _argdic = dic2attrs(base_attr)
-    display( "%s [ %s %s ]" % (name, _arglist, _argdic))
+    output = "%s [ %s %s ]" % (name, _arglist, _argdic)
+    mod = None; lineno = None
+    if DEBUG:
+        f = inspect.currentframe().f_back
+        mod = f.f_code.co_filename
+        lineno = f.f_lineno
+    display(output, filename=mod, lineno=lineno)
 
 def Edge(node1, node2, cls_name, **argdic):
     if 'comment' in argdic: 
@@ -68,7 +105,7 @@ def Edge(node1, node2, cls_name, **argdic):
     base_attr = copy.deepcopy(edge_classes[cls_name])
     base_attr.update(argdic)
     base = "%s -> %s" % (node1, node2)
-    if argdic:
+    if base_attr:
         base = "%s [ %s ]" % (base, dic2attrs(base_attr))
     display(base)
 
@@ -96,6 +133,7 @@ class Math(object):
         template = '\n'.join([
             r"\documentclass[12pt]{standalone}",
             r"\usepackage{amsmath}",
+            r"\DeclareMathSizes{10}{10}{10}{10}",
             r"\begin{document}",
             r"   $" + code +  r"   $",
             "\end{document}",
