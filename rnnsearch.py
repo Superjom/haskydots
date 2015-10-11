@@ -51,19 +51,41 @@ def NodeLabelTpl(name, kind="", size="", mathcode=""):
         img = math_img( name, mathcode) if mathcode else "",
         )
 
+    def EdgeLabelTpl(name, mathcode=""):
+        '''
+        paddle edge with math
+        '''
+        tpl = ''.join(
+            cur_prefix_space() + i for i in [
+            "<<table>\n",
+            "   <tr><td>{name}</td></tr>\n",
+            "   <tr><td><img src=\"{img}\"/></td></tr>" if mathcode else "",
+            "</table>>\n"
+            ])
+        return tpl.format(
+            name = name,
+            img = math_img( name, mathcode) if mathcode else "",
+            )
 ###################################################
 Node("raw_query_word", "base", 
-        color="yellow")
+        color="yellow",
+        label = NodeLabelTpl(
+            name = "raw_query_word",
+            mathcode = "x_i",
+        ))
 Node("raw_query_embeding", "base", 
     label = NodeLabelTpl("raw_query_embeding",
-            mathcode = "x_i", 
+            mathcode = "E_{x_i}", 
         )
     )
 Node("new_query_word", "base", 
         color="yellow",
         label = NodeLabelTpl("new_query_word",
-                "DataLayer",
-                "latent_dim",
+                kind = "DataLayer",
+                size = "latent_dim",
+                mathcode = r'''
+                    y_{i-1}
+                '''
             ),
     )
 Node("new_query_next_word", "base",
@@ -74,7 +96,7 @@ Node("new_query_next_word", "base",
     )
 Node("new_query_embedding", "base",
     label = NodeLabelTpl("new_query_embedding",
-            mathcode = "y_i",
+            mathcode = "E{y_{i-1}}",
         )
     )
 
@@ -162,6 +184,9 @@ Node("encoder_out_memory", "base",
         name = "encoder_out_memory",
         kind = "Memory", 
         size = "sequence",
+        mathcode = r'''
+            h_i
+        '''
     ))
 Node("encoder_out_projected", "base", 
     label = NodeLabelTpl(
@@ -254,6 +279,7 @@ Node("decoder_state", "base",
     ))
 Edge("context", "decoder_state", "encoder_class",
         label = "FullMatrixProjection")
+
 Edge("decoder_state", "decoder_state_memory", "encoder_class",
         label="out_memory")
 
@@ -261,6 +287,10 @@ Node("decoder_chain", "base",
         label = NodeLabelTpl(
             name = "decoder_chain",
             kind = "tanh",
+            size = "2*latent_dim",
+            mathcode = r'''
+                \tilde{t}_i = U_o s_{i-1} + V_o E_{y_{i-1}} + C_o c_i
+            '''
         ))
 Edge("context", "decoder_chain", "encoder_class",
         label = "FullMatrixProjection"
@@ -270,12 +300,13 @@ Node("output", "base",
         label = NodeLabelTpl(
             name = "output",
             kind = "softmax",
+            mathcode = r'''
+                t_i
+            '''
         ))
 Edge("decoder_chain", "output", "encoder_class",
         label = "FullMatrixProjection"
     )
-Edge("decoder_chain", "output", "encoder_class", 
-        label = "FullMatrixProjection")
 
 BlockEnd("decoding")
 
